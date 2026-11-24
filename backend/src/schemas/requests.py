@@ -19,6 +19,10 @@ class RunRequest(Request):
     name: str = Field(min_length=1, max_length=120)
     params: dict = Field(default_factory=dict)
 
+class ReplayRequest(Request):
+    dataset_id: int = Field(gt=0)
+    name: str = Field(default='', max_length=120)
+
 class ReviewRequest(Request):
     review: Review
     note: str = Field(min_length=1, max_length=500)

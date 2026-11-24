@@ -23,5 +23,6 @@ SPEC = {
     'pages': ['值班概览', ledger, run, result, '业务复核', delivery],
     'fields': api_fields(business['fields']), 'params': api_fields(business['parameters']),
     'scheduled': True, 'schedule_date_param': business.get('schedule_date_param'),
+    'schedule_publish_param': business.get('schedule_publish_param'),
     'strict_test_params': business.get('strict_test_params'),
 }

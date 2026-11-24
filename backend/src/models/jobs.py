@@ -24,6 +24,7 @@ class Run(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey('datasets.id'))
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey('runs.id'))
     schedule_id: Mapped[int | None] = mapped_column(ForeignKey('schedules.id'))
     scheduled_at: Mapped[datetime | None]
     name: Mapped[str] = mapped_column(String(120))

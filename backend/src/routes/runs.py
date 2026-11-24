@@ -10,7 +10,7 @@ from src.domain.spec import SPEC
 from src.models.identity import User
 from src.models.jobs import Run
 from src.models.source import Dataset
-from src.schemas.requests import ReviewRequest, RunRequest
+from src.schemas.requests import ReplayRequest, ReviewRequest, RunRequest
 from src.services.audit import record
 from src.services.validation import normalize_params
 from src.utils import views
@@ -40,6 +40,24 @@ def create(body: RunRequest, db: Session = Depends(connection),
     db.add(item)
     db.flush()
     record(db, actor.username, 'analysis.queued', item.id, dataset_id=item.dataset_id)
+    db.commit()
+    wake()
+    return views.run(item, detail=True)
+
+
+@router.post('/{run_id}/replay', status_code=202)
+def replay_run(run_id: int, body: ReplayRequest, db: Session = Depends(connection),
+               actor: User = Depends(allow(Role.ADMIN, Role.ANALYST))):
+    parent = require_job(db, run_id)
+    if parent.status != Status.COMPLETE or not (parent.result or {}).get('roster'):
+        raise HTTPException(409, '只有已发布名单的运行可以按原名单复盘')
+    if not db.get(Dataset, body.dataset_id):
+        raise HTTPException(404, '找不到指定的数据批次')
+    item = Run(name=body.name or f'{parent.name} · 复盘', dataset_id=body.dataset_id,
+               parent_id=parent.id, params=parent.params, author=actor.username)
+    db.add(item)
+    db.flush()
+    record(db, actor.username, 'analysis.replay', item.id, parent_id=parent.id, dataset_id=item.dataset_id)
     db.commit()
     wake()
     return views.run(item, detail=True)

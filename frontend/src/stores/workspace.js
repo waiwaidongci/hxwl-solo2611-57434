@@ -12,6 +12,7 @@ export const workspace = {
   getRun: id => call(`/runs/${id}`),
   upload: data => call('/datasets', data),
   start: data => call('/runs', data),
+  replayRun: (id, data) => call(`/runs/${id}/replay`, data),
   review: (id, data) => call(`/runs/${id}/review`, data),
   audit: () => call('/audit'),
   schedules: () => call('/schedules'),

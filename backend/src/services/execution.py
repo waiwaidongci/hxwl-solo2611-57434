@@ -1,9 +1,9 @@
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy import and_, or_, select
 from src.config.database import Session
 from src.constants.enums import Status
-from src.domain.analysis import analyze
+from src.domain.analysis import analyze, replay
 from src.domain.spec import SPEC
 from src.models.jobs import Delivery, Run, Schedule
 from src.models.source import Dataset
@@ -28,7 +28,13 @@ def materialize_due():
             if item.repeat_daily:
                 elapsed_days = (stamp - due).days
                 due += timedelta(days=elapsed_days)
+                publish_key = SPEC.get('schedule_publish_param')
                 period_key = SPEC.get('schedule_date_param')
+                if publish_key and params.get(publish_key):
+                    publish = datetime.fromisoformat(params[publish_key]) + timedelta(days=elapsed_days)
+                    params[publish_key] = publish.isoformat(timespec='minutes')
+                    item.params = dict(params)
+                    dataset_id = db.scalar(select(Dataset.id).order_by(Dataset.id.desc()).limit(1)) or dataset_id
                 if period_key:
                     report_day = date.fromisoformat(params[period_key]) + timedelta(days=elapsed_days)
                     params[period_key] = report_day.isoformat()
@@ -59,14 +65,24 @@ def claim():
         job.attempt += 1
         job.lease_until = stamp + timedelta(minutes=3)
         records = db.get(Dataset, job.dataset_id).rows
-        return job.id, job.attempt, records, job.params
+        roster = None
+        if job.parent_id:
+            parent = db.get(Run, job.parent_id)
+            roster = (parent.result or {}).get('roster') if parent and parent.status == Status.COMPLETE else None
+            if roster is None:
+                job.status = Status.FAILED
+                job.finished_at = stamp
+                job.error = '原名单尚无可用结果，请先完成原运行'
+                record(db, 'worker', 'analysis.failed', job.id, reason=job.error)
+                return None
+        return job.id, job.attempt, records, job.params, roster
 
 
 def execute(lease):
-    job_id, attempt, rows, params = lease
+    job_id, attempt, rows, params, roster = lease
     result = export = failure = None
     try:
-        result = analyze(rows, params)
+        result = replay(roster, rows) if roster is not None else analyze(rows, params)
         export = write_report(job_id, attempt, result)
     except ValueError as error:
         failure = str(error)[:500]

@@ -22,7 +22,7 @@ export async function runPage(route, refresh) {
   const plan = button('保存定时计划',{type:'button',class:'primary','data-testid':'save-schedule'});
   const scheduleFields = scheduling && session.canReview && el('details',{class:'schedule-fields'},
     el('summary',{},'定时站内分发'),
-    p('单次计划使用选定数据批次。每日计划沿用同一批次，业务按报告日推进时会使用最新批次。计算通过发布条件后进入站内收件箱。','subtle'),
+    p('单次计划使用选定数据批次。每日计划会沿同一批次并把名单发布时刻顺延一天，业务按报告日推进时会使用最新批次。计算通过发布条件后进入站内收件箱。','subtle'),
     field({key:'recipient',label:'收件团队',type:'select',required:false,options:spec.recipients}),
     field({key:'first_at',label:'首次执行时间（北京时间）',type:'datetime-local',required:false}),
     el('label',{class:'check'},el('input',{name:'repeat_daily',type:'checkbox'}),'每日同一时间运行'), plan);

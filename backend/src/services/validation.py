@@ -1,7 +1,7 @@
 import csv
 import io
 import math
-from datetime import date
+from datetime import date, datetime
 from src.domain import analysis
 from src.domain.spec import SPEC
 
@@ -26,6 +26,9 @@ def cell(field, raw):
                 raise ValueError
         elif kind == 'date':
             value = date.fromisoformat(str(value)).isoformat()
+        elif kind == 'datetime':
+            parsed = datetime.fromisoformat(str(value).replace(' ', 'T'))
+            value = parsed.isoformat(timespec='seconds')
         elif kind == 'bool':
             values = {'true': True, 'false': False, '1': True, '0': False, '是': True, '否': False}
             value = values[str(value).lower()]
@@ -52,7 +55,8 @@ def parse_rows(text):
     rows = []
     try:
         headers = reader.fieldnames or []
-        if not required <= set(headers) or not set(headers) <= keys or len(headers) != len(set(headers)):
+        if (not required <= set(headers) or not set(headers) <= keys
+                or len(headers) != len(set(headers))):
             raise ValueError('CSV 表头与字段说明不符，请下载模板检查列名')
         for raw in reader:
             if len(rows) >= 5000:
